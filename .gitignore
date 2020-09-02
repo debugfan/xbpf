@@ -114,3 +114,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+vm/Debug
+vm/Release
+vm/x64
+.vs
+*.db
