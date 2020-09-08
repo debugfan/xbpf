@@ -21,8 +21,34 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <inttypes.h>
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
 #include "ubpf_int.h"
+#include "portable_endian.h"
+
+#ifdef _WIN32
+int vasprintf(char **strp, const char *fmt, va_list ap) {
+	// _vscprintf tells you how big the buffer needs to be
+	int len = _vscprintf(fmt, ap);
+	if (len == -1) {
+		return -1;
+	}
+	size_t size = (size_t)len + 1;
+	char *str = malloc(size);
+	if (!str) {
+		return -1;
+	}
+	// _vsprintf_s is the "secure" version of vsprintf
+	int r = vsprintf_s(str, len + 1, fmt, ap);
+	if (r == -1) {
+		free(str);
+		return -1;
+	}
+	*strp = str;
+	return r;
+}
+#endif
 
 #define MAX_EXT_FUNCS 64
 
@@ -64,7 +90,11 @@ void
 ubpf_destroy(struct ubpf_vm *vm)
 {
     if (vm->jitted) {
+#ifdef _WIN32
+		VirtualFree(vm->jitted, 0, MEM_RELEASE);
+#else
         munmap(vm->jitted, vm->jitted_size);
+#endif
     }
     free(vm->insts);
     free(vm->ext_funcs);
@@ -224,7 +254,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_NEG:
-            reg[inst.dst] = -reg[inst.dst];
+            reg[inst.dst] = -(int64_t)reg[inst.dst];
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_MOD_IMM:
@@ -336,7 +366,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             reg[inst.dst] >>= reg[inst.src];
             break;
         case EBPF_OP_NEG64:
-            reg[inst.dst] = -reg[inst.dst];
+            reg[inst.dst] = -(int64_t)reg[inst.dst];
             break;
         case EBPF_OP_MOD64_IMM:
             reg[inst.dst] %= inst.imm;
@@ -374,13 +404,13 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
          */
 #define BOUNDS_CHECK_LOAD(size) \
     do { \
-        if (!bounds_check(vm, (void *)reg[inst.src] + inst.offset, size, "load", cur_pc, mem, mem_len, stack)) { \
+        if (!bounds_check(vm, (char *)reg[inst.src] + inst.offset, size, "load", cur_pc, mem, mem_len, stack)) { \
             return UINT64_MAX; \
         } \
     } while (0)
 #define BOUNDS_CHECK_STORE(size) \
     do { \
-        if (!bounds_check(vm, (void *)reg[inst.dst] + inst.offset, size, "store", cur_pc, mem, mem_len, stack)) { \
+        if (!bounds_check(vm, (char *)reg[inst.dst] + inst.offset, size, "store", cur_pc, mem, mem_len, stack)) { \
             return UINT64_MAX; \
         } \
     } while (0)
@@ -744,10 +774,10 @@ bounds_check(const struct ubpf_vm *vm, void *addr, int size, const char *type, u
 {
     if (!vm->bounds_check_enabled)
         return true;
-    if (mem && (addr >= mem && (addr + size) <= (mem + mem_len))) {
+    if (mem && (addr >= mem && ((char *)addr + size) <= ((char *)mem + mem_len))) {
         /* Context access */
         return true;
-    } else if (addr >= stack && (addr + size) <= (stack + STACK_SIZE)) {
+    } else if (addr >= stack && ((char *)addr + size) <= ((char *)stack + STACK_SIZE)) {
         /* Stack access */
         return true;
     } else {

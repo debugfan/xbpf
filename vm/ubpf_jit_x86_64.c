@@ -19,13 +19,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <inttypes.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
 #include <sys/mman.h>
+#endif
 #include <errno.h>
 #include <assert.h>
 #include "ubpf_int.h"
 #include "ubpf_jit_x86_64.h"
+
+#ifdef _WIN32
+#pragma warning(disable: 4996)
+int rand_r(unsigned int *seed)
+{
+	unsigned int next = *seed;
+	int result;
+	next *= 1103515245;
+	next += 12345;
+	result = (unsigned int)(next / 65536) % 2048;
+	next *= 1103515245;
+	next += 12345;
+	result <<= 10;
+	result ^= (unsigned int)(next / 65536) % 1024;
+	next *= 1103515245;
+	next += 12345;
+	result <<= 10;
+	result ^= (unsigned int)(next / 65536) % 1024;
+	*seed = next;
+	return result;
+}
+#endif
 
 /* Special values for target_pc in struct jump */
 #define TARGET_PC_EXIT -1
@@ -570,15 +596,25 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     resolve_jumps(&state);
 
     jitted_size = state.offset;
+#ifdef _WIN32
+	jitted = VirtualAlloc(NULL, jitted_size, MEM_COMMIT, PAGE_READWRITE);
+	if(jitted == NULL) {
+#else
     jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (jitted == MAP_FAILED) {
+#endif
         *errmsg = ubpf_error("internal uBPF error: mmap failed: %s\n", strerror(errno));
         goto out;
     }
 
     memcpy(jitted, state.buf, jitted_size);
 
+#ifdef _WIN32
+	DWORD dummy = 0;
+	if(!VirtualProtect(jitted, jitted_size, PAGE_EXECUTE_READ, &dummy)) {
+#else
     if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) {
+#endif
         *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
         goto out;
     }
@@ -591,7 +627,11 @@ out:
     free(state.pc_locs);
     free(state.jumps);
     if (jitted && vm->jitted == NULL) {
+#ifdef _WIN32
+		VirtualFree(jitted, 0, MEM_RELEASE);
+#else
         munmap(jitted, jitted_size);
+#endif
     }
     return vm->jitted;
 }

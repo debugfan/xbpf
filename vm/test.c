@@ -19,14 +19,32 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <getopt.h>
 #include <errno.h>
+#ifdef _WIN32
+#include <Windows.h>
+#include "getopt.h"
+#include "elf.h"
+#else
+#include <getopt.h>
+#include <unistd.h>
 #include <elf.h>
+#endif
 #include <math.h>
-#include "ubpf.h"
+#include "inc/ubpf.h"
+
+#ifdef _WIN32
+#define STDIN_FILENO _fileno( stdin )
+#pragma warning(disable: 4996)
+void *memfrob(void *s, size_t n)
+{
+	char *p = (char *)s;
+	while (n-- > 0)
+		*p++ ^= 42;
+	return s;
+}
+#endif
 
 void ubpf_set_register_offset(int x);
 static void *readfile(const char *path, size_t maxlen, size_t *len);
@@ -49,7 +67,7 @@ int main(int argc, char **argv)
         { .name = "mem", .val = 'm', .has_arg=1 },
         { .name = "jit", .val = 'j' },
         { .name = "register-offset", .val = 'r', .has_arg=1 },
-        { }
+        { NULL }
     };
 
     const char *mem_filename = NULL;
@@ -166,7 +184,7 @@ static void *readfile(const char *path, size_t maxlen, size_t *len)
     void *data = calloc(maxlen, 1);
     size_t offset = 0;
     size_t rv;
-    while ((rv = fread(data+offset, 1, maxlen-offset, file)) > 0) {
+    while ((rv = fread((char *)data+offset, 1, maxlen-offset, file)) > 0) {
         offset += rv;
     }
 
@@ -206,6 +224,7 @@ static void
 trash_registers(void)
 {
     /* Overwrite all caller-save registers */
+#ifndef _WIN32
     asm(
         "mov $0xf0, %rax;"
         "mov $0xf1, %rcx;"
@@ -217,6 +236,7 @@ trash_registers(void)
         "mov $0xf7, %r10;"
         "mov $0xf8, %r11;"
     );
+#endif
 }
 
 static uint32_t

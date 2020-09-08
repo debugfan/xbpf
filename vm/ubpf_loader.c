@@ -22,7 +22,11 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include "ubpf_int.h"
+#ifdef _WIN32
+#include "elf.h"
+#else
 #include <elf.h>
+#endif
 
 #define MAX_SECTIONS 32
 
@@ -47,7 +51,7 @@ bounds_check(struct bounds *bounds, uint64_t offset, uint64_t size)
     if (offset + size > bounds->size || offset + size < offset) {
         return NULL;
     }
-    return bounds->base + offset;
+    return (char *)bounds->base + offset;
 }
 
 int
@@ -213,7 +217,7 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
                 goto error;
             }
 
-            *(uint32_t *)(text_copy + r->r_offset + 4) = imm;
+            *(uint32_t *)((char *)text_copy + r->r_offset + 4) = imm;
         }
     }
 

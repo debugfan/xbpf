@@ -117,5 +117,9 @@ dmypy.json
 vm/Debug
 vm/Release
 vm/x64
+Debug
+Release
 .vs
 *.db
+*.opendb
+*.user

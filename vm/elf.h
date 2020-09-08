@@ -19,7 +19,17 @@
 #ifndef _ELF_H
 #define	_ELF_H 1
 
+#ifdef _WIN32
+#ifdef __cplusplus
+# define __BEGIN_DECLS extern "C" {
+# define __END_DECLS }
+#else
+# define __BEGIN_DECLS /* empty */
+# define __END_DECLS /* empty */
+#endif
+#else
 #include <features.h>
+#endif
 
 __BEGIN_DECLS
 
