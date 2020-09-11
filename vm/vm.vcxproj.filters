@@ -30,12 +30,18 @@
     <ClCompile Include="ubpf_loader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="xvsprintf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ubpf_jit_x86_64.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xvsprintf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -17,6 +17,7 @@
  */
 
 #include <stdarg.h>
+#ifdef __KERNEL__
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/string.h>
@@ -30,6 +31,35 @@
 #include <asm/page.h>		/* for PAGE_SIZE */
 #include <asm/div64.h>
 #include <asm/sections.h>	/* for dereference_function_descriptor() */
+#else
+
+#include <ctype.h>
+#include <string.h>
+#include <stdbool.h>
+#include <limits.h>
+#include <errno.h>
+#include "xplatform.h"
+
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+
+#ifndef WARN_ON_ONCE
+#define WARN_ON_ONCE(x) (x)
+#endif
+
+#ifndef dereference_function_descriptor
+#define dereference_function_descriptor(p) (p)
+#endif
+
+static long long do_lldiv(long long *numer, long long denom)
+{
+	long long rem = (*numer) % denom;
+	*numer = (*numer) / denom;
+	return rem;
+}
+
+#endif
 
 /* Works only for digits and letters, but small and fast */
 #define TOLOWER(x) ((x) | 0x20)
@@ -87,7 +117,7 @@ EXPORT_SYMBOL(simple_strtoul);
 long simple_strtol(const char *cp, char **endp, unsigned int base)
 {
 	if(*cp == '-')
-		return -simple_strtoul(cp + 1, endp, base);
+		return -(long)simple_strtoul(cp + 1, endp, base);
 	return simple_strtoul(cp, endp, base);
 }
 EXPORT_SYMBOL(simple_strtol);
@@ -133,7 +163,7 @@ EXPORT_SYMBOL(simple_strtoull);
 long long simple_strtoll(const char *cp, char **endp, unsigned int base)
 {
 	if(*cp=='-')
-		return -simple_strtoull(cp + 1, endp, base);
+		return -(long long)simple_strtoull(cp + 1, endp, base);
 	return simple_strtoull(cp, endp, base);
 }
 
@@ -384,7 +414,7 @@ static noinline char* put_dec(char *buf, unsigned long long num)
 		unsigned rem;
 		if (num < 100000)
 			return put_dec_trunc(buf, num);
-		rem = do_div(num, 100000);
+		rem = do_lldiv(&num, 100000);
 		buf = put_dec_full(buf, rem);
 	}
 }
@@ -594,6 +624,7 @@ static char *symbol_string(char *buf, char *end, void *ptr,
 #endif
 }
 
+#ifdef ENABLE_RESOURCE_FORMAT
 static char *resource_string(char *buf, char *end, struct resource *res,
 				struct printf_spec spec)
 {
@@ -629,7 +660,9 @@ static char *resource_string(char *buf, char *end, struct resource *res,
 
 	return string(buf, end, sym, spec);
 }
+#endif
 
+#ifdef ENABLE_MAC_ADDRESS_FORMAT
 static char *mac_address_string(char *buf, char *end, u8 *addr,
 				struct printf_spec spec, const char *fmt)
 {
@@ -646,7 +679,9 @@ static char *mac_address_string(char *buf, char *end, u8 *addr,
 
 	return string(buf, end, mac_addr, spec);
 }
+#endif
 
+#ifdef ENABLE_IP_ADDRESS_FORMAT
 static char *ip4_string(char *p, const u8 *addr, bool leading_zeros)
 {
 	int i;
@@ -789,6 +824,7 @@ static char *ip4_addr_string(char *buf, char *end, const u8 *addr,
 
 	return string(buf, end, ip4_addr, spec);
 }
+#endif
 
 /*
  * Show a '%p' thing.  A kernel extension is that the '%p' is followed
@@ -832,11 +868,16 @@ static char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 		/* Fallthrough */
 	case 'S':
 		return symbol_string(buf, end, ptr, spec, *fmt);
+#ifdef ENABLE_RESOURCE_FORMAT
 	case 'R':
 		return resource_string(buf, end, ptr, spec);
+#endif
+#ifdef ENABLE_MAC_ADDRESS_FORMAT
 	case 'M':			/* Colon separated: 00:01:02:03:04:05 */
 	case 'm':			/* Contiguous: 000102030405 */
 		return mac_address_string(buf, end, ptr, spec, fmt);
+#endif
+#ifdef ENABLE_IP_ADDRESS_FORMAT
 	case 'I':			/* Formatted IP supported
 					 * 4:	1.2.3.4
 					 * 6:	0001:0203:...:0708
@@ -853,6 +894,7 @@ static char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 			return ip4_addr_string(buf, end, ptr, spec, fmt);
 		}
 		break;
+#endif
 	}
 	spec.flags |= SMALL;
 	if (spec.field_width == -1) {

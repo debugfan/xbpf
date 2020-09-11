@@ -29,6 +29,7 @@
 #include "ubpf_int.h"
 //#include "portable_endian.h"
 #include "xendian.h"
+#include "xvsprintf.h"
 
 #ifdef _WIN32
 int vasprintf(char **strp, const char *fmt, va_list ap) {
