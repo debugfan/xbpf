@@ -16,10 +16,13 @@
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
 
-#ifndef	_ENDIAN_H
-#define	_ENDIAN_H	1
+#ifndef	_XENDIAN_H
+#define	_XENDIAN_H	1
 
-#include <features.h>
+//#include <features.h>
+#ifndef __USE_BSD
+#define __USE_BSD	1
+#endif
 
 /* Definitions for byte order, according to significance of bytes,
    from low addresses to high addresses.  The value is what you get by
@@ -34,7 +37,10 @@
 #define	__PDP_ENDIAN	3412
 
 /* This file defines `__BYTE_ORDER' for the particular machine.  */
-#include <bits/endian.h>
+//#include <bits/endian.h>
+#ifndef __BYTE_ORDER
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#endif
 
 /* Some machines may need to use a different endianness for floating point
    values.  */
@@ -58,7 +64,8 @@
 
 #ifdef __USE_BSD
 /* Conversion interfaces.  */
-# include <bits/byteswap.h>
+//# include <bits/byteswap.h>
+#include "xbyteswap.h"
 
 # if __BYTE_ORDER == __LITTLE_ENDIAN
 #  define htobe16(x) __bswap_16 (x)

@@ -21,11 +21,14 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <inttypes.h>
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <sys/mman.h>
 #endif
 #include "ubpf_int.h"
-#include "portable_endian.h"
+//#include "portable_endian.h"
+#include "xendian.h"
 
 #ifdef _WIN32
 int vasprintf(char **strp, const char *fmt, va_list ap) {
