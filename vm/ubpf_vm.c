@@ -21,19 +21,17 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <inttypes.h>
-#ifdef _WIN32
-#include <Windows.h>
-#else
+#ifndef _WIN32
 #include <sys/mman.h>
 #endif
+#include "xplatform.h"
 #include "ubpf_int.h"
-//#include "portable_endian.h"
 #include "xendian.h"
 #include "xvsprintf.h"
 
 #define MAX_EXT_FUNCS 64
 
-static bool validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
+static bool validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, int num_insts, char **errmsg);
 static bool bounds_check(const struct ubpf_vm *vm, void *addr, int size, const char *type, uint16_t cur_pc, void *mem, size_t mem_len, void *stack);
 
 bool toggle_bounds_check(struct ubpf_vm *vm, bool enable)
@@ -83,7 +81,7 @@ ubpf_destroy(struct ubpf_vm *vm)
     }
     free(vm->insts);
     free(vm->ext_funcs);
-    free(vm->ext_func_names);
+    free((void *)vm->ext_func_names);
     free(vm);
 }
 
@@ -290,11 +288,11 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             break;
         case EBPF_OP_BE:
             if (inst.imm == 16) {
-                reg[inst.dst] = htobe16(reg[inst.dst]);
+                reg[inst.dst] = htobe16((unsigned short)reg[inst.dst]);
             } else if (inst.imm == 32) {
-                reg[inst.dst] = htobe32(reg[inst.dst]);
+                reg[inst.dst] = htobe32((unsigned int)reg[inst.dst]);
             } else if (inst.imm == 64) {
-                reg[inst.dst] = htobe64(reg[inst.dst]);
+                reg[inst.dst] = htobe64((unsigned long long)reg[inst.dst]);
             }
             break;
 
@@ -437,15 +435,15 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
 
         case EBPF_OP_STXW:
             BOUNDS_CHECK_STORE(4);
-            *(uint32_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            *(uint32_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = (uint32_t)reg[inst.src];
             break;
         case EBPF_OP_STXH:
             BOUNDS_CHECK_STORE(2);
-            *(uint16_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            *(uint16_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = (uint16_t)reg[inst.src];
             break;
         case EBPF_OP_STXB:
             BOUNDS_CHECK_STORE(1);
-            *(uint8_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            *(uint8_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = (uint8_t)reg[inst.src];
             break;
         case EBPF_OP_STXDW:
             BOUNDS_CHECK_STORE(8);
@@ -579,7 +577,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
 }
 
 static bool
-validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
+validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, int num_insts, char **errmsg)
 {
     if (num_insts >= MAX_INSTS) {
         *errmsg = ubpf_error("too many instructions (max %u)", MAX_INSTS);

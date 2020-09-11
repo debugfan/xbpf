@@ -55,6 +55,10 @@ typedef unsigned int u32;
 #define dereference_function_descriptor(p) (p)
 #endif
 
+#ifndef noinline
+#define  noinline	__declspec(noinline)
+#endif
+
 static long long do_lldiv(long long *numer, long long denom)
 {
 	long long rem = (*numer) % denom;
@@ -414,10 +418,10 @@ static char* put_dec_full(char *buf, unsigned q)
 static noinline char* put_dec(char *buf, unsigned long long num)
 {
 	while (1) {
-		unsigned rem;
+		unsigned int rem;
 		if (num < 100000)
-			return put_dec_trunc(buf, num);
-		rem = do_lldiv(&num, 100000);
+			return put_dec_trunc(buf, (unsigned int)num);
+		rem = (unsigned int)do_lldiv(&num, 100000);
 		buf = put_dec_full(buf, rem);
 	}
 }
@@ -1315,7 +1319,7 @@ int xvscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 	int i;
 
 	i=xvsnprintf(buf,size,fmt,args);
-	return (i >= size) ? (size - 1) : i;
+	return (i >= (int)size) ? ((int)size - 1) : i;
 }
 EXPORT_SYMBOL(vscnprintf);
 
@@ -1364,7 +1368,7 @@ int xscnprintf(char * buf, size_t size, const char *fmt, ...)
 	va_start(args, fmt);
 	i = xvsnprintf(buf, size, fmt, args);
 	va_end(args);
-	return (i >= size) ? (size - 1) : i;
+	return (i >= (int)size) ? ((int)size - 1) : i;
 }
 EXPORT_SYMBOL(xscnprintf);
 

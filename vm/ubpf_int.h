@@ -28,7 +28,7 @@ typedef uint64_t (*ext_func)(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64
 
 struct ubpf_vm {
     struct ebpf_inst *insts;
-    uint16_t num_insts;
+    int num_insts;
     ubpf_jit_fn jitted;
     size_t jitted_size;
     ext_func *ext_funcs;

@@ -68,7 +68,7 @@ static unsigned char _xctype[] = {
 static inline unsigned char __xtolower(unsigned char c)
 {
 	if (isupper(c))
-		c -= 'A'-'a';
+		c += 'a' - 'A';
 	return c;
 }
 

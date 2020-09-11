@@ -33,10 +33,4 @@
 #define PAGE_SIZE	0x1000
 #endif
 
-#ifndef noinline
-#ifdef _WIN32
-#define  noinline	__declspec(noinline)
-#endif
-#endif
-
 #endif

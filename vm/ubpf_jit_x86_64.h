@@ -273,7 +273,7 @@ static inline void
 emit_load_imm(struct jit_state *state, int dst, int64_t imm)
 {
     if (imm >= INT32_MIN && imm <= INT32_MAX) {
-        emit_alu64_imm32(state, 0xc7, 0, dst, imm);
+        emit_alu64_imm32(state, 0xc7, 0, dst, (int32_t)imm);
     } else {
         /* movabs $imm,dst */
         emit_basic_rex(state, 1, 0, dst);
