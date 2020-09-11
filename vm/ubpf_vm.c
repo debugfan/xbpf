@@ -31,29 +31,6 @@
 #include "xendian.h"
 #include "xvsprintf.h"
 
-#ifdef _WIN32
-int vasprintf(char **strp, const char *fmt, va_list ap) {
-	// _vscprintf tells you how big the buffer needs to be
-	int len = _vscprintf(fmt, ap);
-	if (len == -1) {
-		return -1;
-	}
-	size_t size = (size_t)len + 1;
-	char *str = malloc(size);
-	if (!str) {
-		return -1;
-	}
-	// _vsprintf_s is the "secure" version of vsprintf
-	int r = vsprintf_s(str, len + 1, fmt, ap);
-	if (r == -1) {
-		free(str);
-		return -1;
-	}
-	*strp = str;
-	return r;
-}
-#endif
-
 #define MAX_EXT_FUNCS 64
 
 static bool validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
@@ -95,9 +72,13 @@ ubpf_destroy(struct ubpf_vm *vm)
 {
     if (vm->jitted) {
 #ifdef _WIN32
+#ifndef _NTDDK_
 		VirtualFree(vm->jitted, 0, MEM_RELEASE);
+#endif
 #else
+#ifndef __KERNEL__
         munmap(vm->jitted, vm->jitted_size);
+#endif
 #endif
     }
     free(vm->insts);
@@ -163,10 +144,11 @@ ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg
 }
 
 static uint32_t
-u32(uint64_t x)
+__u32(uint64_t x)
 {
-    return x;
+    return (uint32_t)x;
 }
+#define u32(x) __u32(x)
 
 uint64_t
 ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
@@ -797,7 +779,7 @@ ubpf_error(const char *fmt, ...)
     char *msg;
     va_list ap;
     va_start(ap, fmt);
-    if (vasprintf(&msg, fmt, ap) < 0) {
+    if (xvasprintf(&msg, fmt, ap) < 0) {
         msg = NULL;
     }
     va_end(ap);

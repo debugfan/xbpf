@@ -33,12 +33,11 @@
 #include <asm/sections.h>	/* for dereference_function_descriptor() */
 #else
 
-#include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
 #include <limits.h>
 #include <errno.h>
-#include "xplatform.h"
+#include "xctype.h"
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -46,6 +45,10 @@ typedef unsigned int u32;
 
 #ifndef WARN_ON_ONCE
 #define WARN_ON_ONCE(x) (x)
+#endif
+
+#ifndef EXPORT_SYMBOL
+#define EXPORT_SYMBOL(x)
 #endif
 
 #ifndef dereference_function_descriptor
@@ -580,10 +583,10 @@ static char *string(char *buf, char *end, char *s, struct printf_spec spec)
 {
 	int len, i;
 
-	if ((unsigned long)s < PAGE_SIZE)
+	if ((uintptr_t)s < PAGE_SIZE)
 		s = "<NULL>";
 
-	len = strnlen(s, spec.precision);
+	len = (int)strnlen(s, spec.precision);
 
 	if (!(spec.flags & LEFT)) {
 		while (len < spec.field_width--) {
@@ -608,7 +611,7 @@ static char *string(char *buf, char *end, char *s, struct printf_spec spec)
 static char *symbol_string(char *buf, char *end, void *ptr,
 				struct printf_spec spec, char ext)
 {
-	unsigned long value = (unsigned long) ptr;
+	uintptr_t value = (uintptr_t)ptr;
 #ifdef CONFIG_KALLSYMS
 	char sym[KSYM_SYMBOL_LEN];
 	if (ext != 'f' && ext != 's')
@@ -903,7 +906,7 @@ static char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 	}
 	spec.base = 16;
 
-	return number(buf, end, (unsigned long) ptr, spec);
+	return number(buf, end, (uintptr_t) ptr, spec);
 }
 
 /*
@@ -1130,7 +1133,7 @@ qualifier:
  * Call this function if you are already dealing with a va_list.
  * You probably want snprintf() instead.
  */
-int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
+int xvsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
 	unsigned long long num;
 	char *str, *end, c;
@@ -1289,7 +1292,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 	return str-buf;
 
 }
-EXPORT_SYMBOL(vsnprintf);
+EXPORT_SYMBOL(xvsnprintf);
 
 /**
  * vscnprintf - Format a string and place it in a buffer
@@ -1307,11 +1310,11 @@ EXPORT_SYMBOL(vsnprintf);
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
-int vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
+int xvscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
 	int i;
 
-	i=vsnprintf(buf,size,fmt,args);
+	i=xvsnprintf(buf,size,fmt,args);
 	return (i >= size) ? (size - 1) : i;
 }
 EXPORT_SYMBOL(vscnprintf);
@@ -1330,17 +1333,17 @@ EXPORT_SYMBOL(vscnprintf);
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
-int snprintf(char * buf, size_t size, const char *fmt, ...)
+int xsnprintf(char * buf, size_t size, const char *fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args, fmt);
-	i=vsnprintf(buf,size,fmt,args);
+	i=xvsnprintf(buf,size,fmt,args);
 	va_end(args);
 	return i;
 }
-EXPORT_SYMBOL(snprintf);
+EXPORT_SYMBOL(xsnprintf);
 
 /**
  * scnprintf - Format a string and place it in a buffer
@@ -1353,17 +1356,17 @@ EXPORT_SYMBOL(snprintf);
  * the trailing '\0'. If @size is <= 0 the function returns 0.
  */
 
-int scnprintf(char * buf, size_t size, const char *fmt, ...)
+int xscnprintf(char * buf, size_t size, const char *fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args, fmt);
-	i = vsnprintf(buf, size, fmt, args);
+	i = xvsnprintf(buf, size, fmt, args);
 	va_end(args);
 	return (i >= size) ? (size - 1) : i;
 }
-EXPORT_SYMBOL(scnprintf);
+EXPORT_SYMBOL(xscnprintf);
 
 /**
  * vsprintf - Format a string and place it in a buffer
@@ -1380,11 +1383,11 @@ EXPORT_SYMBOL(scnprintf);
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
-int vsprintf(char *buf, const char *fmt, va_list args)
+int xvsprintf(char *buf, const char *fmt, va_list args)
 {
-	return vsnprintf(buf, INT_MAX, fmt, args);
+	return xvsnprintf(buf, INT_MAX, fmt, args);
 }
-EXPORT_SYMBOL(vsprintf);
+EXPORT_SYMBOL(xvsprintf);
 
 /**
  * sprintf - Format a string and place it in a buffer
@@ -1398,17 +1401,17 @@ EXPORT_SYMBOL(vsprintf);
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
-int sprintf(char * buf, const char *fmt, ...)
+int xsprintf(char * buf, const char *fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args, fmt);
-	i=vsnprintf(buf, INT_MAX, fmt, args);
+	i=xvsnprintf(buf, INT_MAX, fmt, args);
 	va_end(args);
 	return i;
 }
-EXPORT_SYMBOL(sprintf);
+EXPORT_SYMBOL(xsprintf);
 
 #ifdef CONFIG_BINARY_PRINTF
 /*
@@ -1775,7 +1778,7 @@ EXPORT_SYMBOL_GPL(bprintf);
  * @fmt:	format of buffer
  * @args:	arguments
  */
-int vsscanf(const char * buf, const char * fmt, va_list args)
+int xvsscanf(const char * buf, const char * fmt, va_list args)
 {
 	const char *str = buf;
 	char *next;
@@ -1995,7 +1998,7 @@ int vsscanf(const char * buf, const char * fmt, va_list args)
 
 	return num;
 }
-EXPORT_SYMBOL(vsscanf);
+EXPORT_SYMBOL(xvsscanf);
 
 /**
  * sscanf - Unformat a buffer into a list of arguments
@@ -2003,14 +2006,14 @@ EXPORT_SYMBOL(vsscanf);
  * @fmt:	formatting of buffer
  * @...:	resulting arguments
  */
-int sscanf(const char * buf, const char * fmt, ...)
+int xsscanf(const char * buf, const char * fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args,fmt);
-	i = vsscanf(buf,fmt,args);
+	i = xvsscanf(buf,fmt,args);
 	va_end(args);
 	return i;
 }
-EXPORT_SYMBOL(sscanf);
+EXPORT_SYMBOL(xsscanf);
