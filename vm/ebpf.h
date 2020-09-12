@@ -17,7 +17,7 @@
 #ifndef EBPF_H
 #define EBPF_H
 
-#include <stdint.h>
+#include "stdint.h"
 
 /* eBPF definitions */
 

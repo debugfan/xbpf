@@ -14,10 +14,10 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/limits.h>
 #include <linux/version.h>
 #else
-#include <unistd.h>  
+#include <unistd.h>
+#include <sys/mman.h>
 #endif
 #endif
 

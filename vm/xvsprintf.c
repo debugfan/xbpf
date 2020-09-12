@@ -56,7 +56,7 @@ typedef unsigned int u32;
 #endif
 
 #ifndef noinline
-#define  noinline	__declspec(noinline)
+#define	noinline	__declspec(noinline)
 #endif
 
 static long long do_lldiv(long long *numer, long long denom)

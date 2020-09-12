@@ -6,11 +6,28 @@
 // The C Standard Library <stdint.h> header.
 //
 #pragma once
-#define _STDINT
+//#define _STDINT
+#ifndef GENERAL_STDINT_H
+#define GENERAL_STDINT_H
 
 #ifndef RC_INVOKED
 
-#include <vcruntime.h>
+#ifdef __KERNEL__
+#include <linux/types.h>
+#include <linux/limits.h>
+#elif defined(_NTDDK_)
+#include <limits.h>
+#else
+#include <limits.h>
+#include <stdint.h>
+#endif
+
+#ifdef INT32_MAX
+#define HAVE_STDINT
+#endif
+
+#ifndef HAVE_STDINT
+//#include <vcruntime.h>
 
 
 
@@ -45,6 +62,7 @@ typedef long long          intmax_t;
 typedef unsigned long long uintmax_t;
 
 // These macros must exactly match those in the Windows SDK's intsafe.h.
+#ifdef _WIN32
 #define INT8_MIN         (-127i8 - 1)
 #define INT16_MIN        (-32767i16 - 1)
 #define INT32_MIN        (-2147483647i32 - 1)
@@ -57,6 +75,20 @@ typedef unsigned long long uintmax_t;
 #define UINT16_MAX       0xffffui16
 #define UINT32_MAX       0xffffffffui32
 #define UINT64_MAX       0xffffffffffffffffui64
+#else
+#define INT8_MIN         (-127 - 1)
+#define INT16_MIN        (-32767 - 1)
+#define INT32_MIN        (-2147483647 - 1)
+#define INT64_MIN        (-9223372036854775807LL - 1)
+#define INT8_MAX         127
+#define INT16_MAX        32767
+#define INT32_MAX        2147483647
+#define INT64_MAX        9223372036854775807LL
+#define UINT8_MAX        0xff
+#define UINT16_MAX       0xffff
+#define UINT32_MAX       0xffffffffU
+#define UINT64_MAX       0xffffffffffffffffULL
+#endif
 
 #define INT_LEAST8_MIN   INT8_MIN
 #define INT_LEAST16_MIN  INT16_MIN
@@ -129,7 +161,9 @@ typedef unsigned long long uintmax_t;
 
 
 
+#endif
 #endif // RC_INVOKED
+#endif
 
 /*
  * Copyright (c) 1992-2012 by P.J. Plauger.  ALL RIGHTS RESERVED.

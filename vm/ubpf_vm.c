@@ -21,9 +21,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <inttypes.h>
-#ifndef _WIN32
-#include <sys/mman.h>
-#endif
+//#include <sys/mman.h>
 #include "xplatform.h"
 #include "ubpf_int.h"
 #include "xendian.h"
